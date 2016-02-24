@@ -20,14 +20,17 @@ except ImportError:
 
 AVAILABLE_OPTIONS = ['startdate', 'enddate', 'today', 'width', 'height',
                      'color', 'bgcolor', 'wecolor', 'weekends', 'gridlines',
-                     'expected', 'colorexpected', 'title']
-
+                     'expected', 'spent', 'colorexpected', 'colorspent', 'title']
 
 def get_estimation_field():
     return Option('estimation-tools', 'estimation_field', 'estimatedhours',
         doc="""Defines what custom field should be used to calculate
         estimation charts. Defaults to 'estimatedhours'""")
 
+def get_spent_field():
+    return Option('estimation-tools', 'spent_field', 'spenthours',
+        doc="""Defines what custom field should be used to calculate spent charts.
+        Defaults to 'spenthours'""")
 
 def get_closed_states():
     return ListOption('estimation-tools', 'closed_states', 'closed',
@@ -52,11 +55,10 @@ def get_serverside_charts():
 
 class EstimationToolsBase(Component):
     """ Base class EstimationTools components that auto-disables if
-    estimation field is not properly configured. """
-
+    estimation field and spent field are not properly configured. """
     abstract = True
     estimation_field = get_estimation_field()
-
+    spent_field = get_spent_field()
     def __init__(self, *args, **kwargs):
         if not self.env.config.has_option('ticket-custom',
                                           self.estimation_field):
@@ -64,6 +66,12 @@ class EstimationToolsBase(Component):
             self.log.error("EstimationTools (%s): "
                            "Estimation field not configured. "
                            "Component disabled.", self.__class__.__name__)
+            self.env.disable_component(self)
+        if not self.env.config.has_option('ticket-custom', self.spent_field):
+            # No spent field configured. Disable plugin and log error.
+            self.log.error("EstimationTools (%s): "
+                        "Spent field not configured. "
+                        "Component disabled.", self.__class__.__name__)
             self.env.disable_component(self)
 
 
@@ -136,6 +144,9 @@ def parse_options(db, content, options):
 
     if options.get('weekends'):
         options['weekends'] = parse_bool(options['weekends'] )
+
+    if options.get('spent'):
+        options['spent'] = parse_bool(options['spent'] )
 
     # all arguments that are no key should be treated as part of the query
     query_args = {}
